@@ -76,7 +76,7 @@ steals from [tutorial](http://www.hdfgroup.org/HDF5/Tutor/index.html) of HDF5 ([
 Implementation Details for Other Developers
 -------------------------------------------
 
-Two teniques (template and lazy evaluation) to simplify this implementation.
+Two techniques (template and lazy evaluation) to simplify this implementation.
 
 I use template to provide type traits and construct composited datatype such as complex number.
 
