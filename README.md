@@ -7,7 +7,7 @@ Features
 --------
 
 - Single-header library, just copy into your source code folder
-- Very simple API do not require knowledge of HDF5
+- Very simple API so that knowledge of HDF5 is not required
 - Work with std::complex which the original library does not provide
 - Easy to mix with original library for customized need
 
@@ -32,6 +32,41 @@ int main(){
     return 0;
 }
 
+```
+
+Compare with original library
+-----------------------------
 
 
+### Save an integer
+
+#### original library
+
+	steal from http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/examples/h5crtdat.c h5_rdwt.c
+
+```C++
+
+	hid_t file, dataset_id, dataspace_id;
+	herr_t status;
+	int data = 7;
+	hsize_t dim = 1;
+	
+	file_id = H5Fcreate("test.h5", H5F_ACC_TRUNC);
+	dataspace_id = H5Screate_simple(1, &dim, NULL);
+	dataset_id = H5Dcreate2(file_id, "/dset", H5T_STD_I32BE, dataspace_id,
+	                   H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	status = H5Dwrite(dataset_id, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &data);
+	
+	status = H5Dclose(dataset_id);
+	status = H5Sclose(dataspace_id);
+	status = H5Fclose(file_id);
+	
+```
+
+#### ezh5
+
+```C++
+	File fh5 ("test.h5", H5F_ACC_TRUNC);
+	fh5["dset"] = 7;
+	// not need to close, resource is release in destructor of intermediate classes
 ```
