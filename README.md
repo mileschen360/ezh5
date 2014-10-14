@@ -42,7 +42,7 @@ Compare with original library
 
 #### original library
 
-	steal from http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/examples/h5crtdat.c h5_rdwt.c
+	steals from [tutorial](http://www.hdfgroup.org/HDF5/Tutor/index.html) of HDF5 ([h5crtdat.c](http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/examples/h5crtdat.c) [h5_rdwt.c](http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/examples/h5_rdwt.c))
 
 ```C++
 
@@ -68,5 +68,5 @@ Compare with original library
 ```C++
 	File fh5 ("test.h5", H5F_ACC_TRUNC);
 	fh5["dset"] = 7;
-	// not need to close, resource is release in destructor of intermediate classes
+	// not need to close, resource is released in destructors of intermediate classes
 ```
