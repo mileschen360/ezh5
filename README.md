@@ -10,6 +10,7 @@ Features
 - Very simple API so that knowledge of HDF5 is not required
 - Work with std::complex which the original library does not provide
 - Easy to mix with original library for customized need
+- 
 
 Example
 -------
@@ -70,3 +71,13 @@ steals from [tutorial](http://www.hdfgroup.org/HDF5/Tutor/index.html) of HDF5 ([
 	fh5["dset"] = 7;
 	// not need to close, resource is released in destructors of intermediate classes
 ```
+
+
+Implementation Details for Other Developers
+-------------------------------------------
+
+Two teniques (template and lazy evaluation) to simplify this implementation.
+
+I use template to provide type traits and construct composited datatype such as complex number.
+
+Lazy evaluation is used to improve the performance, and it happens to greatly simplify creating groups.
