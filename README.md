@@ -42,7 +42,7 @@ Compare with original library
 
 #### original library
 
-	steals from [tutorial](http://www.hdfgroup.org/HDF5/Tutor/index.html) of HDF5 ([h5crtdat.c](http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/examples/h5crtdat.c) [h5_rdwt.c](http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/examples/h5_rdwt.c))
+steals from [tutorial](http://www.hdfgroup.org/HDF5/Tutor/index.html) of HDF5 ([h5crtdat.c](http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/examples/h5crtdat.c) [h5_rdwt.c](http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/examples/h5_rdwt.c))
 
 ```C++
 
