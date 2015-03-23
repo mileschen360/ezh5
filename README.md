@@ -10,7 +10,7 @@ Features
 - Very simple API so that knowledge of HDF5 is not required
 - Work with std::complex which the original library does not provide
 - Easy to mix with original library for customized need
-- 
+
 
 Example
 -------
@@ -20,16 +20,16 @@ Example
 #include "ezh5.hpp"
 #include <complex>
 
-using namespace ezh5;
+using namespace ezh5;  // this library is defined in namespace ezh5
 
 int main(){
-    File fh5 ("test.h5", H5F_ACC_TRUNC);
-    fh5["x"]=2;
-    fh5["group"]["y"] = 0.1;
-    fh5["group"]["subgroup"]["z"] = 0.2;
-    auto gr= fh5["group2"];
-    gr["x2"] = 0.5;
-    gr["y2"] = std::complex<double> (1.2, 3.5);
+    File fh5 ("Gradebook.h5", H5F_ACC_TRUNC);
+    fh5["n_students"] = 120;                    // number of students
+    fh5["students"]["a_score"] = 82.7;           // average score
+    fh5["students"]["John"]["score"] = 92;     
+    auto gr= fh5["teachers"];                   // gr: group
+    gr["a_age"] = 45;                           // average age
+    gr["z"] = std::complex<double> (1.2, 3.5);  // z: a complex number 1.2+3.5I
     return 0;
 }
 
