@@ -24,12 +24,12 @@ using namespace ezh5;  // this library is defined in namespace ezh5
 
 int main(){
     File fh5 ("Gradebook.h5", H5F_ACC_TRUNC);
-    fh5["n_students"] = 120;                    // number of students
+    fh5["n_students"] = 120;                     // number of students
     fh5["students"]["a_score"] = 82.7;           // average score
     fh5["students"]["John"]["score"] = 92;     
-    auto gr= fh5["teachers"];                   // gr: group
-    gr["a_age"] = 45;                           // average age
-    gr["z"] = std::complex<double> (1.2, 3.5);  // z: a complex number 1.2+3.5I
+    auto gr= fh5["teachers"];                    // gr: group
+    gr["a_age"] = 45;                            // average age
+    gr["z"] = std::complex<double> (1.2, 3.5);   // z: a complex number 1.2+3.5I
     return 0;
 }
 

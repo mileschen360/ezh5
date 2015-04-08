@@ -2,6 +2,7 @@
 #define EZH5_H
 
 #include <hdf5.h>
+#include <hdf5_hl.h>
 
 #ifndef CANNOT_FIND_BOOST
 #include <boost/numeric/ublas/vector.hpp>
@@ -19,28 +20,35 @@ namespace ezh5{
     using namespace std;
     
     template<typename T>
-    struct DataType{
+    struct TypeMem{
 	static hid_t id;
     };
-
     
-    // define complex number datatype
+    // define complex number datatype layout
     template<typename T>
-    struct DataType<std::complex<T> >{
+    struct TypeMem<std::complex<T> >{
 	static hid_t id;
-	DataType(){
-	    H5Tinsert(id, "r", 0, DataType<T>::id);  // the name 'r' is to be compatible with h5py
-	    H5Tinsert(id, "i", sizeof(T), DataType<T>::id); // TODO: use HOFFSET
+	TypeMem(){
+	    H5Tinsert(id, "r", 0, TypeMem<T>::id);  // the name 'r' is to be compatible with h5py
+	    H5Tinsert(id, "i", sizeof(T), TypeMem<T>::id); // TODO: use HOFFSET
 	}
     };
+
+    // template<>
+    // struct TypeMem<const char*>{
+    // 	static hid_t id;
+    // 	TypeMem(){
+    // 	    H5Tset_size(id, H5T_VARIABLE);
+    // 	}
+    // };  // because the TypeFile<const char*> need to be H5T_FORTRAN_S1, so I use specialization in operator=() instead
 
     
     /// char* dsname
     template<typename T>
     hid_t write(hid_t loc_id, const char* dsname, const T& buf){
 	hid_t dataspace_id = H5Screate(H5S_SCALAR);
-	hid_t dataset_id = H5Dcreate(loc_id, dsname, DataType<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	hid_t error_id = H5Dwrite(dataset_id, DataType<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &buf);
+	hid_t dataset_id = H5Dcreate(loc_id, dsname, TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	hid_t error_id = H5Dwrite(dataset_id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &buf);
 	H5Dclose(dataset_id);
 	H5Sclose(dataspace_id);
 	return error_id;
@@ -57,8 +65,8 @@ namespace ezh5{
     // 	hsize_t dims[1];
     // 	dims[0] = vec.size();
     // 	hid_t dp_id = H5Screate_simple(1, dims, NULL);
-    // 	hid_t ds_id = H5Dcreate(loc_id, dsname, DataType<VEC::value_type>::id, dp_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    // 	hid_t err_id = H5Dwrite(ds_id, DataType<VEC::value_type>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec[0]);
+    // 	hid_t ds_id = H5Dcreate(loc_id, dsname, TypeMem<VEC::value_type>::id, dp_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    // 	hid_t err_id = H5Dwrite(ds_id, TypeMem<VEC::value_type>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec[0]);
     // 	H5Dclose(ds_id);
     // 	H5Sclose(dp_id);
     // 	return err_id;
@@ -79,9 +87,9 @@ namespace ezh5{
 	std::cout<<dsname<<std::endl;
 	hid_t dp_id = H5Screate_simple(1, dims, NULL);
 	assert(dp_id>=0);
-	hid_t ds_id = H5Dcreate(loc_id, dsname, DataType<T>::id, dp_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	hid_t ds_id = H5Dcreate(loc_id, dsname, TypeMem<T>::id, dp_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	assert(ds_id>=0);
-	hid_t err_id = H5Dwrite(ds_id, DataType<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec[0]);
+	hid_t err_id = H5Dwrite(ds_id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec[0]);
 	H5Dclose(ds_id);
 	H5Sclose(dp_id);
 	return err_id;
@@ -99,8 +107,8 @@ namespace ezh5{
 	hsize_t dims[1];
 	dims[0] = vec.size();
 	hid_t dp_id = H5Screate_simple(1, dims, NULL);
-	hid_t ds_id = H5Dcreate(loc_id, dsname, DataType<T>::id, dp_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	hid_t err_id = H5Dwrite(ds_id, DataType<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec(0));
+	hid_t ds_id = H5Dcreate(loc_id, dsname, TypeMem<T>::id, dp_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	hid_t err_id = H5Dwrite(ds_id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec(0));
 	H5Dclose(ds_id);
 	H5Sclose(dp_id);
 	return err_id;
@@ -128,13 +136,13 @@ namespace ezh5{
 	    ds_id = H5Dopen1(loc_id, dsname);
 	    break;
 	case false:
-	    ds_id = H5Dcreate(loc_id, dsname, DataType<T>::id, dp_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	    ds_id = H5Dcreate(loc_id, dsname, TypeMem<T>::id, dp_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	    break;
 	default:
 	    break;
 	}
 	assert(ds_id >=0);
-	hid_t err_id = H5Dwrite(ds_id, DataType<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mat(0,0));
+	hid_t err_id = H5Dwrite(ds_id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mat(0,0));
 	assert(err_id>=0);
 	H5Dclose(ds_id);
 	H5Sclose(dp_id);
@@ -180,24 +188,28 @@ namespace ezh5{
     
 }
 
+
 namespace ezh5{
 
-    template<> hid_t DataType<double>::id = H5T_NATIVE_DOUBLE;
-    template<> hid_t DataType<float>::id = H5T_NATIVE_FLOAT;
-    template<> hid_t DataType<int>::id = H5T_NATIVE_INT;
-    template<> hid_t DataType<long>::id = H5T_NATIVE_LONG;
-    template<> hid_t DataType<unsigned int>::id = H5T_NATIVE_UINT;
-    template<> hid_t DataType<unsigned long>::id = H5T_NATIVE_ULONG;
+    template<> hid_t TypeMem<double>::id = H5T_NATIVE_DOUBLE;
+    template<> hid_t TypeMem<float>::id = H5T_NATIVE_FLOAT;
+    template<> hid_t TypeMem<int>::id = H5T_NATIVE_INT;
+    template<> hid_t TypeMem<long>::id = H5T_NATIVE_LONG;
+    template<> hid_t TypeMem<unsigned int>::id = H5T_NATIVE_UINT;
+    template<> hid_t TypeMem<unsigned long>::id = H5T_NATIVE_ULONG;
 
-    template<> hid_t DataType<std::complex<float> >::id = H5Tcreate(H5T_COMPOUND, sizeof(std::complex<float>));  // create compound datatype
-    template<> hid_t DataType<std::complex<double> >::id = H5Tcreate(H5T_COMPOUND, sizeof(std::complex<double>));
+    // hid_t TypeMem<const char*>::id =  H5Tcopy(H5T_C_S1);
+    
+    template<> hid_t TypeMem<std::complex<float> >::id = H5Tcreate(H5T_COMPOUND, sizeof(std::complex<float>));  // create compound datatype
+    template<> hid_t TypeMem<std::complex<double> >::id = H5Tcreate(H5T_COMPOUND, sizeof(std::complex<double>));
     // TODO: why I need specification, instead of defining follow
     //template<typename T>  
-    //hid_t DataType<std::complex<T> >::id = H5Tcreate(H5T_COMPOUND, sizeof(std::complex<T>));
+    //hid_t TypeMem<std::complex<T> >::id = H5Tcreate(H5T_COMPOUND, sizeof(std::complex<T>));
 
 
-    DataType<std::complex<float> > obj_to_run_constructor_float;  // to add LAYOUT (STRUCTURE) to compound datatype
-    DataType<std::complex<double> > obj_to_run_constructor_double;
+    TypeMem<std::complex<float> > obj_to_run_constructor_float;  // to add LAYOUT (STRUCTURE) to compound datatype
+    TypeMem<std::complex<double> > obj_to_run_constructor_double;
+    // TypeMem<char*> obj_to_run_constructor_charp;
 
 }
 
@@ -209,8 +221,7 @@ namespace ezh5{
 	ID(): id(-1){}
 	ID(hid_t id_in) : id(id_in){}
 
-	~ID(){
-	}
+	~ID(){}
     
     };
 
@@ -246,68 +257,121 @@ namespace ezh5{
 	    }
 	    assert(this->id>0);
 	    return Node(this->id, path_more);
-	
-	    // std::size_t i_slash = path.find('/');
-	    // this->id = H5Gcreate2(pid, path.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	    // return Node(this->id, path_more);
-	    // }else{
-	    //     hid_t gid;
-	    //     const string& grpname = path.substr(0,i_slash);
-	    //     htri_t is_exist = H5Lexists(this->id, grpname.c_str(), H5P_DEFAULT);
-	    //     if (is_exist<0){
-	    // 	assert(false);
-	    //     }else if (is_exist==false){
-	    // 	gid = H5Gcreate2(this->pid, path.substr(0,i_slash).c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	    //     }else{
-	    // 	gid = H5Gopen(this->id, grpname.c_str(), H5P_DEFAULT);
-	    //     }
-	    //     assert(gid>=0);
-	    //     return Node(gid, path.substr(i_slash+1, string::npos));
-	    // }
-	}
+       	}
 
-    
+
+	/// write scalar
 	template<typename T>
 	Node& operator=(T val){
-	    if(id==-1){
-		hid_t dataspace_id = H5Screate(H5S_SCALAR);
-		this->id = H5Dcreate(pid, path.c_str(), DataType<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	    hid_t dataspace_id = -1;
+	    if(this->id == -1){
+		dataspace_id = H5Screate(H5S_SCALAR);
+		this->id = H5Dcreate(pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	    }
-	    hid_t error_id = H5Dwrite(id, DataType<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &val);
+	    hid_t error_id = H5Dwrite(id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &val);
+	    H5Dclose(this->id);
+	    this->id = -1;   // TODO: why keep on setting this->id here, not necessary
+	    if (dataspace_id != -1) {H5Sclose(dataspace_id);}
+	    return *this;
+	}
+	
+	/// write std::vector
+	template<typename T>
+	Node& operator=(const std::vector<T>& vec){
+	    hid_t dataspace_id = -1;
+	    if(this->id == -1){
+		hsize_t dims[1];
+		dims[0] = vec.size();
+		dataspace_id = H5Screate_simple(1, dims, NULL);
+		assert(dataspace_id>=0);
+		this->id = H5Dcreate(pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	    }
+	    hid_t error_id = H5Dwrite(id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec[0]);
 	    H5Dclose(this->id);
 	    this->id = -1;
+	    if (dataspace_id != -1) {H5Sclose(dataspace_id);}
 	    return *this;
-
-	
-	    // std::size_t i_slash;
-	    // if((i_slash= path.find('/'))!=string::npos){
-	    //     this->id = H5Gcreate2(pid, path.substr(0,i_slash).c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	    //     Node(id, path.substr(i_slash+1, string::npos)) = val;
-	    // }else{//leaf
-	    //     if(id==-1){
-	    // 	hid_t dataspace_id = H5Screate(H5S_SCALAR);
-	    // 	this->id = H5Dcreate(pid, path.c_str(), DataType<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	    //     }
-	    //     hid_t error_id = H5Dwrite(id, DataType<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &val);
-	    // }
 	}
 
+	/// write boost::numeric::ublas::vector
+	#ifdef _BOOST_UBLAS_VECTOR_
+	template<typename T>
+	Node& operator=(const boost::numeric::ublas::vector<T>& vec){
+	    hid_t dataspace_id = -1;
+	    if(this->id == -1){
+		hsize_t dims[1];
+		dims[0] = vec.size();
+		dataspace_id = H5Screate_simple(1, dims, NULL);
+		assert(dataspace_id>=0);
+		this->id = H5Dcreate(pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	    }
+	    hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec(0));
+	    H5Dclose(this->id);
+	    this->id = -1;
+	    if (dataspace_id != -1) {H5Sclose(dataspace_id);}
+	    return *this;
+	}
+	#endif
+
+	/// write boost::numeric::ublas::vector
+	#ifdef _BOOST_UBLAS_MATRIX_
+	template<typename T>
+	Node& operator=(const boost::numeric::ublas::matrix<T>& mat){
+	    hid_t dataspace_id = -1;
+	    if(this->id == -1){
+		hsize_t dims[2];
+		dims[0] = mat.size1();
+		dims[1] = mat.size2();
+		hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
+		assert(dataspace_id>=0);
+		this->id = H5Dcreate(this->pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	    }
+	    hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mat(0,0));
+	    assert(error_id>=0);
+	    H5Dclose(this->id);
+	    this->id = -1;
+	    if (dataspace_id != -1) {H5Sclose(dataspace_id);}
+	    return *this;
+	}
+	#endif
+	
+	
 	~Node(){
-	    cout<<"closing "<<path<<endl;
 	    if(this->id>0){
+		cout<<"closing "<<path<<endl;
 		H5Gclose(this->id);
 		this->id = -1;
 	    }
 	}
     
     public:
-	hid_t pid;
+	hid_t pid; // parent_id
 	string path;
     };
 
+    template<>
+    Node& Node::operator=(const char* str){
+    	hid_t type_in_file = H5Tcopy(H5T_FORTRAN_S1);
+    	H5Tset_size(type_in_file, H5T_VARIABLE);
+    	hid_t type_in_mem = H5Tcopy(H5T_C_S1);
+    	H5Tset_size(type_in_mem, H5T_VARIABLE);
+
+    	hid_t dataspace_id = -1;
+    	if(this->id == -1){
+    	    hsize_t dims[1] = {1};
+    	    dataspace_id = H5Screate(H5S_SCALAR);
+    	    this->id = H5Dcreate(pid, path.c_str(), type_in_mem, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    	}
+    	hid_t error_id = H5Dwrite(id, type_in_mem, H5S_ALL, H5S_ALL, H5P_DEFAULT, &str);
+    	H5Dclose(this->id);
+    	this->id = -1;
+    	if (dataspace_id != -1) {H5Sclose(dataspace_id);}
+    	H5Tclose(type_in_file);
+    	H5Tclose(type_in_mem);
+    	return *this;
+    }
+
     class Dataset : public Node{
-
-
     };
 
 
@@ -315,7 +379,8 @@ namespace ezh5{
     public:
 	// TODO: open an opened file
 	// TODO: implement open if exists, create if not
-	File(const string& path, unsigned flags){
+	File(const string& path, unsigned flags)
+	    : __auto_close(true){
 	    if(flags==H5F_ACC_RDWR || flags==H5F_ACC_RDONLY){
 		this->id = H5Fopen(path.c_str(), flags, H5P_DEFAULT);
 	    }else if (flags==H5F_ACC_TRUNC || flags==H5F_ACC_EXCL){
@@ -325,32 +390,21 @@ namespace ezh5{
 	    }
 	}
 
-
-	~File(){
-	    H5Fclose(this->id);
-	    this->id = -1;
+	/// a special constructor to construct File from an exiting file id
+	/// this constructor should only be used for low level code to avoid confusing
+	File(hid_t fid)
+	    : __auto_close(false){
+	    this->id = fid;
 	}
 
-	// Node operator[](const string& path){
-	// 	std::size_t i_slash = path.find('/');
-	// 	cout<<i_slash<<endl;
-	// 	if (i_slash==string::npos)
-	// 	    return Node(this->id, path);
-	// 	else{
-	// 	    hid_t gid;
-	// 	    const string& grpname = path.substr(0,i_slash);
-	// 	    htri_t is_exist = H5Lexists(this->id, grpname.c_str(), H5P_DEFAULT);
-	// 	    if (is_exist<0){
-	// 		assert(false);
-	// 	    }else if (is_exist==false){
-	// 		gid = H5Gcreate2(this->id, path.substr(0,i_slash).c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	// 	    }else{
-	// 		gid = H5Gopen(this->id, grpname.c_str(), H5P_DEFAULT);
-	// 	    }
-	// 	    assert(gid>=0);
-	// 	    return Node(gid, path.substr(i_slash+1, string::npos));
-	// 	}
-	// }
+	~File(){
+	    if (__auto_close) {
+		H5Fclose(this->id);
+	    }
+	    this->id = -1;  // so that ~Node will not try to close it again
+	}
+    private:
+	bool __auto_close;
     };
 
 
