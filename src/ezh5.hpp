@@ -84,7 +84,7 @@ namespace ezh5{
     hid_t write(hid_t loc_id, const char* dsname, const std::vector<T>& vec){
 	hsize_t dims[1];
 	dims[0] = vec.size();
-	std::cout<<dsname<<std::endl;
+	//std::cout<<dsname<<std::endl;
 	hid_t dp_id = H5Screate_simple(1, dims, NULL);
 	assert(dp_id>=0);
 	hid_t ds_id = H5Dcreate(loc_id, dsname, TypeMem<T>::id, dp_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
@@ -235,7 +235,7 @@ namespace ezh5{
 	    : ID(-1),
 	      pid(pid_in),
 	      path(path_in){
-	    cout<<"creating "<<path<<endl;
+	    //cout<<"creating "<<path<<endl;
 	}
 
     
@@ -338,7 +338,7 @@ namespace ezh5{
 	
 	~Node(){
 	    if(this->id>0){
-		cout<<"closing "<<path<<endl;
+		//cout<<"closing "<<path<<endl;
 		H5Gclose(this->id);
 		this->id = -1;
 	    }
