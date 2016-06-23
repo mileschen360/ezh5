@@ -81,3 +81,10 @@ Two techniques (template and lazy evaluation) to simplify this implementation.
 I use template to provide type traits and construct composited datatype such as complex number.
 
 Lazy evaluation is used to improve the performance, and it happens to greatly simplify creating groups.
+
+
+
+TODOs
+-----
+
+improve as https://github.com/garrison/eigen3-hdf5/blob/master/eigen3-hdf5.hpp

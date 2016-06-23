@@ -1,24 +1,97 @@
+/* Written by Mengsu Chen mschen@vt.edu
+ * 
+ * 
+ *
+ *
+ *
+ *
+ */
+
+
 #ifndef EZH5_H
 #define EZH5_H
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
 
-#ifndef CANNOT_FIND_BOOST
+// Preprocessor directives
+// Please define EZH5_BOOST before including this file to force boost support
+#ifdef EZH5_BOOST
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #endif
 
+// Please define EZH5_EIGEN before including this file to force Eigen support
+#ifdef EZH5_EIGEN
+#include <Eigen/Core>
+#endif
+
+
 #include <complex>
 #include <string>
 #include <vector>
-
+#include <cassert>
 
 
 namespace ezh5{
 
-    using namespace std;
-    
+
+    namespace trait {
+        template<bool, typename T>
+	struct enable_if{};
+	    
+	template<typename T>
+	struct enable_if<true, T>{
+	    typedef T type;
+	};
+
+        // for function operator=(T)
+        template<typename T>
+        struct is_scalar {
+            static const bool value = false;
+        };
+
+        template<>
+        struct is_scalar<int>{
+            static const bool value = true;
+        };
+
+        template<>
+        struct is_scalar<unsigned int>{
+            static const bool value = true;
+        };
+
+        template<>
+        struct is_scalar<long>{
+            static const bool value = true;
+        };
+
+        template<>
+        struct is_scalar<unsigned long>{
+            static const bool value = true;
+        };
+
+        template<>
+        struct is_scalar<float>{
+            static const bool value = true;
+        };
+
+        template<>
+        struct is_scalar<double>{
+            static const bool value = true;
+        };
+
+        template<>
+        struct is_scalar<std::complex<float> >{
+            static const bool value = true;
+        };
+
+        template<>
+        struct is_scalar<std::complex<double> >{
+            static const bool value = true;
+        };
+    }//end name
+
     template<typename T>
     struct TypeMem{
 	static hid_t id;
@@ -53,6 +126,7 @@ namespace ezh5{
 	H5Sclose(dataspace_id);
 	return error_id;
     }
+
     /// string dsname
     template<typename T>
     hid_t write(hid_t loc_id, const std::string& dsname, const T& buf){
@@ -188,9 +262,9 @@ namespace ezh5{
     
 }
 
-
 namespace ezh5{
 
+    // definition of class static variable
     template<> hid_t TypeMem<double>::id = H5T_NATIVE_DOUBLE;
     template<> hid_t TypeMem<float>::id = H5T_NATIVE_FLOAT;
     template<> hid_t TypeMem<int>::id = H5T_NATIVE_INT;
@@ -231,7 +305,7 @@ namespace ezh5{
 
 	Node(){}
     
-	Node(hid_t pid_in, const string& path_in)
+	Node(hid_t pid_in, const std::string& path_in)
 	    : ID(-1),
 	      pid(pid_in),
 	      path(path_in){
@@ -239,12 +313,12 @@ namespace ezh5{
 	}
 
     
-	Node& operator()(const string& path){
+	Node& operator()(const std::string& path){
 	    return *this;
 	}
 
     
-	Node operator[](const string& path_more){
+	Node operator[](const std::string& path_more){
 	    if(this->id==-1){// in lazy
 		htri_t is_exist = H5Lexists(pid, path.c_str(), H5P_DEFAULT);
 		if (is_exist<0){
@@ -254,7 +328,7 @@ namespace ezh5{
 		}else{
 		    this->id = H5Gopen(pid, path.c_str(), H5P_DEFAULT);
 		}
-	    }
+	    } // TODO: else open dataset, read, and return the value
 	    assert(this->id>0);
 	    return Node(this->id, path_more);
        	}
@@ -262,7 +336,7 @@ namespace ezh5{
 
 	/// write scalar
 	template<typename T>
-	Node& operator=(T val){
+	typename trait::enable_if<trait::is_scalar<T>::value, Node>::type& operator=(T val){
 	    hid_t dataspace_id = -1;
 	    if(this->id == -1){
 		dataspace_id = H5Screate(H5S_SCALAR);
@@ -335,7 +409,58 @@ namespace ezh5{
 	}
 	#endif
 	
-	
+
+        // write Eigen::Matrix, Array
+#ifdef EIGEN_EIGENBASE_H
+        template<typename Derived>
+        Node& operator=(const Eigen::EigenBase<Derived>& mat){
+	    typedef typename Derived::Scalar _Scalar;
+            hid_t dataspace_id = -1;
+           if(this->id == -1){
+               hsize_t dims[2];
+               dims[0] = mat.rows();
+               dims[1] = mat.cols();
+               hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
+               assert(dataspace_id>=0);
+               this->id = H5Dcreate(this->pid, path.c_str(), TypeMem<_Scalar>::id,
+				    dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+           }
+           hid_t error_id = H5Dwrite(this->id, TypeMem<_Scalar>::id,
+				     H5S_ALL, H5S_ALL, H5P_DEFAULT, mat.derived().data());
+           assert(error_id>=0);
+           H5Dclose(this->id);
+           this->id = -1;
+           if (dataspace_id != -1) {H5Sclose(dataspace_id);}
+            return *this;
+        }
+#endif
+
+
+#ifdef EIGEN_BLOCK_H
+        template<typename XprType, int BlockRows, int BlockCols, bool InnerPanel>
+        Node& operator=(const Eigen::Block<XprType, BlockRows, BlockCols, InnerPanel>& mat){
+            hid_t dataspace_id = -1;
+            typedef typename XprType::Scalar Scalar;
+            Scalar z (0.);
+//            if(this->id == -1){
+//                hsize_t dims[2];
+//                dims[1] = mat.rows();
+//                dims[0] = mat.cols();
+//                hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
+//                assert(dataspace_id>=0);
+//                this->id = H5Dcreate(this->pid, path.c_str(), TypeMem<_Scalar>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+//            }
+//            hid_t error_id = H5Dwrite(this->id, TypeMem<_Scalar>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, mat.data());
+//            assert(error_id>=0);
+//            H5Dclose(this->id);
+//            this->id = -1;
+//            if (dataspace_id != -1) {H5Sclose(dataspace_id);}
+            return *this;
+        }
+#endif
+
+	Node& operator=(const char* str);
+
 	~Node(){
 	    if(this->id>0){
 		//cout<<"closing "<<path<<endl;
@@ -346,10 +471,9 @@ namespace ezh5{
     
     public:
 	hid_t pid; // parent_id
-	string path;
+	std::string path;
     };
 
-    template<>
     Node& Node::operator=(const char* str){
     	hid_t type_in_file = H5Tcopy(H5T_FORTRAN_S1);
     	H5Tset_size(type_in_file, H5T_VARIABLE);
@@ -358,7 +482,7 @@ namespace ezh5{
 
     	hid_t dataspace_id = -1;
     	if(this->id == -1){
-    	    hsize_t dims[1] = {1};
+    	    // hsize_t dims[1] = {1};
     	    dataspace_id = H5Screate(H5S_SCALAR);
     	    this->id = H5Dcreate(pid, path.c_str(), type_in_mem, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     	}
@@ -379,14 +503,14 @@ namespace ezh5{
     public:
 	// TODO: open an opened file
 	// TODO: implement open if exists, create if not
-	File(const string& path, unsigned flags)
+	File(const std::string& path, unsigned flags)
 	    : __auto_close(true){
 	    if(flags==H5F_ACC_RDWR || flags==H5F_ACC_RDONLY){
 		this->id = H5Fopen(path.c_str(), flags, H5P_DEFAULT);
 	    }else if (flags==H5F_ACC_TRUNC || flags==H5F_ACC_EXCL){
 		this->id = H5Fcreate(path.c_str(), flags, H5P_DEFAULT, H5P_DEFAULT);
 	    }else{
-		assert(false && "unknow file access mode");
+		assert(!"unknow file access mode");
 	    }
 	}
 
@@ -406,9 +530,6 @@ namespace ezh5{
     private:
 	bool __auto_close;
     };
-
-
 }
-
 
 #endif
