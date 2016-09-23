@@ -317,21 +317,37 @@ namespace ezh5{
 	    return *this;
 	}
 
-    
-	Node operator[](const std::string& path_more){
-	    if(this->id==-1){// in lazy
-		htri_t is_exist = H5Lexists(pid, path.c_str(), H5P_DEFAULT);
-		if (is_exist<0){
-		    assert(false);
-		}else if (is_exist==false){
-		    this->id = H5Gcreate2(pid, path.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-		}else{
-		    this->id = H5Gopen(pid, path.c_str(), H5P_DEFAULT);
-		}
-	    } // TODO: else open dataset, read, and return the value
-	    assert(this->id>0);
-	    return Node(this->id, path_more);
-       	}
+
+        Node operator[](const std::string& path_more){
+            if(this->id==-1){// in lazy
+                htri_t is_exist = H5Lexists(pid, path.c_str(), H5P_DEFAULT);
+                if (is_exist<0){
+                    assert(false);
+                }else if (is_exist==false){
+                    this->id = H5Gcreate2(pid, path.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+                }else{
+                    this->id = H5Gopen(pid, path.c_str(), H5P_DEFAULT);
+                }
+            } // TODO: else open dataset, read, and return the value
+            assert(this->id>0);
+            return Node(this->id, path_more);
+        }
+
+
+		/*HDF5 does not at this time provide a mechanism to remove a dataset
+		 * from a file, or to reclaim the storage from deleted objects. Through
+		 * the H5Gunlink function one can remove links to a dataset from the
+		 * file structure. Once all links to a dataset have been removed, that
+		 * dataset becomes inaccessible to any application and is effectively
+		 * removed from the file. But this does not recover the space the
+		 * dataset occupies.
+		 *
+		 * so the following will fail:
+		 * fh5["aa"] = 1;
+		 * fh5["aa"] = 2;
+		 * *
+		 * *
+		 */
 
 
 	/// write scalar
@@ -460,6 +476,8 @@ namespace ezh5{
 #endif
 
 	Node& operator=(const char* str);
+    Node& operator=(const std::string& str);
+
 
 	~Node(){
 	    if(this->id>0){
@@ -493,6 +511,10 @@ namespace ezh5{
     	H5Tclose(type_in_file);
     	H5Tclose(type_in_mem);
     	return *this;
+    }
+
+    Node& Node::operator=(const std::string& str){
+        return operator=(str.c_str());
     }
 
     class Dataset : public Node{
