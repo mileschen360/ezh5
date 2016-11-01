@@ -198,7 +198,8 @@ namespace ezh5{
 
 #ifdef _BOOST_UBLAS_MATRIX_
     template<typename T>
-    hid_t write(hid_t loc_id, const char* dsname, const boost::numeric::ublas::matrix<T>& mat){
+    hid_t write(hid_t loc_id, const char* dsname, const boost::numeric::ublas::matrix<T,
+			boost::numeric::ublas::row_major>& mat){
 	hsize_t dims[2];
 	dims[0] = mat.size1();
 	dims[1] = mat.size2();
@@ -406,7 +407,8 @@ namespace ezh5{
 	/// write boost::numeric::ublas::vector
 	#ifdef _BOOST_UBLAS_MATRIX_
 	template<typename T>
-	Node& operator=(const boost::numeric::ublas::matrix<T>& mat){
+	Node& operator=(const boost::numeric::ublas::matrix<T,
+			boost::numeric::ublas::row_major>& mat){
 	    hid_t dataspace_id = -1;
 	    if(this->id == -1){
 		hsize_t dims[2];
@@ -423,6 +425,29 @@ namespace ezh5{
 	    if (dataspace_id != -1) {H5Sclose(dataspace_id);}
 	    return *this;
 	}
+		template<typename T>
+		Node& operator=(const boost::numeric::ublas::matrix<T,
+				boost::numeric::ublas::column_major>& mat_col_major){
+			boost::numeric::ublas::matrix<T,
+					boost::numeric::ublas::row_major> mat (mat_col_major);
+			hid_t dataspace_id = -1;
+			if(this->id == -1){
+				hsize_t dims[2];
+				dims[0] = mat.size1();
+				dims[1] = mat.size2();
+				hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
+				assert(dataspace_id>=0);
+				this->id = H5Dcreate(this->pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+			}
+			hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mat(0,0));
+			assert(error_id>=0);
+			H5Dclose(this->id);
+			this->id = -1;
+			if (dataspace_id != -1) {H5Sclose(dataspace_id);}
+			return *this;
+		}
+
+
 	#endif
 	
 
