@@ -234,7 +234,7 @@ namespace ezh5{
 
 //---------- read function    
 	template<typename T>
-	hid_t read(hid_t loc_id, const char* dsname, T* p_buf){
+	hid_t read(const hid_t loc_id, const char* dsname, T* p_buf){
 		hid_t dataset_id = H5Dopen2(loc_id, dsname, H5P_DEFAULT);
 		hid_t datatype_id = H5Dget_type(dataset_id);
 		hid_t error_id = H5Dread(dataset_id, datatype_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, p_buf);
@@ -518,10 +518,6 @@ namespace ezh5{
 	};
 
 
-    std::string& operator=(std::string& str, Node& node){
-        return str;
-    }
-
 	Node& Node::operator=(const char* str){
 		hid_t type_in_file = H5Tcopy(H5T_FORTRAN_S1);
 		H5Tset_size(type_in_file, H5T_VARIABLE);
@@ -542,6 +538,7 @@ namespace ezh5{
 		H5Tclose(type_in_mem);
 		return *this;
 	}
+
 
 	Node& Node::operator=(const std::string& str){
 		return operator=(str.c_str());
@@ -574,7 +571,7 @@ namespace ezh5{
 		}
 
 		~File(){
-			if (__auto_close) {
+			if (__auto_close && this->id !=-1) {
 				H5Fclose(this->id);
 			}
 			this->id = -1;  // so that ~Node will not try to close it again
@@ -583,5 +580,62 @@ namespace ezh5{
 		bool __auto_close;
 	};
 }
+
+#include <iostream>
+namespace ezh5 {
+	std::string& operator<<(std::string& str, ezh5::Node& node){ // TODO: doesn't work, maybe because the file string type is H5T_S_C
+        hid_t dataset_id = H5Dopen2(node.pid, node.path.c_str(), H5P_DEFAULT); assert(dataset_id>=0);
+        hid_t datatype_id = H5Dget_type(dataset_id); assert(datatype_id>=0);
+        std::size_t sdim = H5Tget_size(datatype_id);
+        str.resize(sdim);
+        std::cout<<sdim<<std::endl;
+        hid_t error_id = H5Dread(dataset_id, datatype_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &str[0]);
+        assert(error_id>=0);
+        H5Dclose(dataset_id);
+
+		return str;
+	}
+
+    template<typename T>
+    typename ezh5::trait::enable_if<trait::is_scalar<T>::value, T>::type& operator<<(T& data, const ezh5::Node& node){
+        ezh5::read(node.pid, node.path.c_str(), &data);
+        return data;
+    }
+
+
+    template<typename T>
+    void operator<<(std::vector<T>& vec, const ezh5::Node& node){
+        hid_t dataset_id = H5Dopen2(node.pid, node.path.c_str(), H5P_DEFAULT);
+        hid_t datatype_id = H5Dget_type(dataset_id);
+        hid_t dataspace_id = H5Dget_space(dataset_id);
+        hsize_t dims[1];
+        int err = H5Sget_simple_extent_dims(dataspace_id,dims,NULL); assert(err>=0);
+        if (dims[0]>0) {
+            vec.resize(dims[0]);
+            hid_t error_id = H5Dread(dataset_id, datatype_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec[0]);
+        }
+    }
+
+
+#ifdef _BOOST_UBLAS_VECTOR_
+    template<typename T>
+    void operator<<(boost::numeric::ublas::vector<T>& vec, const ezh5::Node& node){
+        hid_t dataset_id = H5Dopen2(node.pid, node.path.c_str(), H5P_DEFAULT);
+        hid_t datatype_id = H5Dget_type(dataset_id);
+        hid_t dataspace_id = H5Dget_space(dataset_id);
+        hsize_t dims[1];
+        int err = H5Sget_simple_extent_dims(dataspace_id,dims,NULL); assert(err>=0);
+        if (dims[0]>0) {
+            vec.resize(dims[0]);
+            hid_t error_id = H5Dread(dataset_id, datatype_id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec(0));
+        }
+    }
+
+
+#endif
+
+
+}
+
 
 #endif
