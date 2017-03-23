@@ -290,7 +290,7 @@ namespace ezh5{
 
 namespace ezh5{
 
-	class ID {
+	class ID { // the base class for Node
 	public:
 		hid_t id;
 		ID(): id(-1){}
@@ -330,7 +330,7 @@ namespace ezh5{
 					this->id = H5Gopen(pid, path.c_str(), H5P_DEFAULT);
 				}
 			} // TODO: else open dataset, read, and return the value
-			assert(this->id>0);
+			assert(this->id>=0);
 			return Node(this->id, path_more);
 		}
 
@@ -356,31 +356,50 @@ namespace ezh5{
 		typename trait::enable_if<trait::is_scalar<T>::value, Node>::type& operator=(T val){
 			hid_t dataspace_id = -1;
 			if(this->id == -1){
-				dataspace_id = H5Screate(H5S_SCALAR);
-				this->id = H5Dcreate(pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+				htri_t is_exist = H5Lexists(pid, path.c_str(), H5P_DEFAULT);
+				if (is_exist<0){
+					assert(false);
+				}else if (is_exist==false) {
+					dataspace_id = H5Screate(H5S_SCALAR);
+					this->id = H5Dcreate(pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT,
+										 H5P_DEFAULT);
+					assert(this->id>=0);
+					hid_t error_id = H5Dwrite(id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &val);
+					assert(error_id>=0);
+					H5Dclose(this->id);
+					H5Sclose(dataspace_id);
+					this->id = -1;   // TODO: why keep on setting this->id here, not necessary
+				}else{
+					std::cout<<"dataset "<<path<<" already exists!"<<std::endl;
+				}
 			}
-			hid_t error_id = H5Dwrite(id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &val);
-			H5Dclose(this->id);
-			this->id = -1;   // TODO: why keep on setting this->id here, not necessary
-			if (dataspace_id != -1) {H5Sclose(dataspace_id);}
 			return *this;
 		}
 
 		/// write std::vector
 		template<typename T>
 		Node& operator=(const std::vector<T>& vec){
-			hid_t dataspace_id = -1;
 			if(this->id == -1){
-				hsize_t dims[1];
-				dims[0] = vec.size();
-				dataspace_id = H5Screate_simple(1, dims, NULL);
-				assert(dataspace_id>=0);
-				this->id = H5Dcreate(pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+				htri_t is_exist = H5Lexists(pid, path.c_str(), H5P_DEFAULT);
+				if (is_exist<0){
+					assert(false);
+				}else if (is_exist==false) {
+					hsize_t dims[1];
+					dims[0] = vec.size();
+					hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
+					assert(dataspace_id >= 0);
+					this->id = H5Dcreate(pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT,
+										 H5P_DEFAULT);
+					assert(this->id >=0);
+					hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec[0]);
+					assert(error_id>=0);
+					H5Dclose(this->id);
+					H5Sclose(dataspace_id);
+					this->id = -1;
+				}else{
+					std::cout<<"dataset "<<path<<" already exists!"<<std::endl;
+				}
 			}
-			hid_t error_id = H5Dwrite(id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec[0]);
-			H5Dclose(this->id);
-			this->id = -1;
-			if (dataspace_id != -1) {H5Sclose(dataspace_id);}
 			return *this;
 		}
 
@@ -388,18 +407,27 @@ namespace ezh5{
 #ifdef _BOOST_UBLAS_VECTOR_
 		template<typename T>
 		Node& operator=(const boost::numeric::ublas::vector<T>& vec){
-			hid_t dataspace_id = -1;
 			if(this->id == -1){
-				hsize_t dims[1];
-				dims[0] = vec.size();
-				dataspace_id = H5Screate_simple(1, dims, NULL);
-				assert(dataspace_id>=0);
-				this->id = H5Dcreate(pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+				htri_t is_exist = H5Lexists(pid, path.c_str(), H5P_DEFAULT);
+				if (is_exist<0){
+					assert(false);
+				}else if (is_exist==false) {
+					hsize_t dims[1];
+					dims[0] = vec.size();
+					hid_t dataspace_id = H5Screate_simple(1, dims, NULL);
+					assert(dataspace_id >= 0);
+					this->id = H5Dcreate(pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT,
+										 H5P_DEFAULT);
+					assert(this->id>=0);
+					hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec(0));
+					assert(error_id>=0);
+					H5Dclose(this->id);
+					H5Sclose(dataspace_id);
+					this->id = -1;
+				}else{
+					std::cout<<"dataset "<<path<<" already exists!"<<std::endl;
+				}
 			}
-			hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &vec(0));
-			H5Dclose(this->id);
-			this->id = -1;
-			if (dataspace_id != -1) {H5Sclose(dataspace_id);}
 			return *this;
 		}
 #endif
@@ -430,20 +458,26 @@ namespace ezh5{
 				boost::numeric::ublas::column_major>& mat_col_major){
 			boost::numeric::ublas::matrix<T,
 					boost::numeric::ublas::row_major> mat (mat_col_major);
-			hid_t dataspace_id = -1;
 			if(this->id == -1){
-				hsize_t dims[2];
-				dims[0] = mat.size1();
-				dims[1] = mat.size2();
-				hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
-				assert(dataspace_id>=0);
-				this->id = H5Dcreate(this->pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+				htri_t is_exist = H5Lexists(pid, path.c_str(), H5P_DEFAULT);
+				if (is_exist<0){
+					assert(false);
+				}else if (is_exist==false){
+					hsize_t dims[2];
+					dims[0] = mat.size1();
+					dims[1] = mat.size2();
+					hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
+					assert(dataspace_id>=0);
+					this->id = H5Dcreate(this->pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+					hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mat(0,0));
+					assert(error_id>=0);
+					H5Sclose(dataspace_id);
+					H5Dclose(this->id);
+					this->id = -1;
+				}else{
+					std::cout<<"dataset "<<path<<" already exists!"<<std::endl;
+				}
 			}
-			hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mat(0,0));
-			assert(error_id>=0);
-			H5Dclose(this->id);
-			this->id = -1;
-			if (dataspace_id != -1) {H5Sclose(dataspace_id);}
 			return *this;
 		}
 
