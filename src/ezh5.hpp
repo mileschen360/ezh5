@@ -1,4 +1,4 @@
-/* Written by Mengsu Chen mschen@vt.edu
+/* Written by Mengsu Chen mengsuchen@gmail.com
  * 
  * 
  *
@@ -439,25 +439,34 @@ namespace ezh5{
 				boost::numeric::ublas::row_major>& mat){
 			hid_t dataspace_id = -1;
 			if(this->id == -1){
-				hsize_t dims[2];
-				dims[0] = mat.size1();
-				dims[1] = mat.size2();
-				hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
-				assert(dataspace_id>=0);
-				this->id = H5Dcreate(this->pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+				htri_t is_exist = H5Lexists(pid, path.c_str(), H5P_DEFAULT);
+				if (is_exist<0) {
+					assert(false);
+				}else if (is_exist==false) {
+					hsize_t dims[2];
+					dims[0] = mat.size1();
+					dims[1] = mat.size2();
+					hid_t dataspace_id = H5Screate_simple(2, dims, NULL);
+					assert(dataspace_id >= 0);
+					this->id = H5Dcreate(this->pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT,
+										 H5P_DEFAULT, H5P_DEFAULT);
+					hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mat(0,0));
+					assert(error_id>=0);
+					H5Dclose(this->id);
+					this->id = -1;
+					H5Sclose(dataspace_id);
+				}else{
+					std::cout<<"dataset "<<path<<" already exists!"<<std::endl;
+				}
 			}
-			hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mat(0,0));
-			assert(error_id>=0);
-			H5Dclose(this->id);
-			this->id = -1;
-			if (dataspace_id != -1) {H5Sclose(dataspace_id);}
 			return *this;
 		}
+
 		template<typename T>
 		Node& operator=(const boost::numeric::ublas::matrix<T,
 				boost::numeric::ublas::column_major>& mat_col_major){
 			boost::numeric::ublas::matrix<T,
-					boost::numeric::ublas::row_major> mat (mat_col_major);
+					boost::numeric::ublas::row_major> mat (mat_col_major); // convert to row_major for HDF5
 			if(this->id == -1){
 				htri_t is_exist = H5Lexists(pid, path.c_str(), H5P_DEFAULT);
 				if (is_exist<0){
@@ -471,9 +480,9 @@ namespace ezh5{
 					this->id = H5Dcreate(this->pid, path.c_str(), TypeMem<T>::id, dataspace_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 					hid_t error_id = H5Dwrite(this->id, TypeMem<T>::id, H5S_ALL, H5S_ALL, H5P_DEFAULT, &mat(0,0));
 					assert(error_id>=0);
-					H5Sclose(dataspace_id);
 					H5Dclose(this->id);
 					this->id = -1;
+					H5Sclose(dataspace_id);
 				}else{
 					std::cout<<"dataset "<<path<<" already exists!"<<std::endl;
 				}
